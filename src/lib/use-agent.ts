@@ -1,10 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
-export type Status = "disconnected" | "connecting" | "connected" | "error";
+export type Status = "desktop" | "browser";
 
 export type AgentCommand = {
   type: string;
-  // discriminated loosely; agent ignores nulls
   command?: string | null;
   target?: string | null;
   key?: string | null;
@@ -13,74 +12,63 @@ export type AgentCommand = {
   action?: string | null;
   url?: string | null;
   query?: string | null;
-  dx?: number; dy?: number;
+  dx?: number;
+  dy?: number;
   button?: "left" | "right" | "middle";
   double?: boolean;
 };
 
-const LS_KEY = "myraa_ws_url";
+type MyraaBridge = {
+  isDesktop: true;
+  execute: (cmd: AgentCommand) => Promise<{ ok: boolean; out?: string }>;
+  info: () => Promise<{ platform: string; user: string; nut: boolean; version: string }>;
+};
+
+declare global {
+  interface Window {
+    myraa?: MyraaBridge;
+  }
+}
 
 export function useAgent() {
-  const [status, setStatus] = useState<Status>("disconnected");
-  const [url, setUrl] = useState<string>(() => {
-    if (typeof window === "undefined") return "ws://192.168.1.10:8765";
-    return localStorage.getItem(LS_KEY) || "ws://192.168.1.10:8765";
-  });
   const [log, setLog] = useState<string[]>([]);
-  const wsRef = useRef<WebSocket | null>(null);
+  const [info, setInfo] = useState<{ platform?: string; user?: string; nut?: boolean } | null>(null);
+
+  const isDesktop = typeof window !== "undefined" && !!window.myraa?.isDesktop;
+  const status: Status = isDesktop ? "desktop" : "browser";
 
   const pushLog = useCallback((msg: string) => {
-    setLog((l) => [`${new Date().toLocaleTimeString()} · ${msg}`, ...l].slice(0, 60));
+    setLog((l) => [`${new Date().toLocaleTimeString()} · ${msg}`, ...l].slice(0, 80));
   }, []);
 
-  const connect = useCallback(
-    (target?: string) => {
-      const u = target || url;
-      if (typeof window === "undefined") return;
-      try { wsRef.current?.close(); } catch {}
-      setStatus("connecting");
-      pushLog(`connecting → ${u}`);
-      localStorage.setItem(LS_KEY, u);
-      setUrl(u);
-      try {
-        const ws = new WebSocket(u);
-        wsRef.current = ws;
-        ws.onopen = () => { setStatus("connected"); pushLog("agent online ✓"); };
-        ws.onclose = () => { setStatus("disconnected"); pushLog("agent offline"); };
-        ws.onerror = () => { setStatus("error"); pushLog("connection error — agent running?"); };
-        ws.onmessage = (e) => {
-          try {
-            const m = JSON.parse(e.data);
-            if (m.type === "log") pushLog(`pc → ${m.text}`);
-            else if (m.type === "hello") pushLog(`pc ready · ${m.platform}`);
-            else pushLog(`pc → ${e.data}`);
-          } catch { pushLog(`pc → ${e.data}`); }
-        };
-      } catch (err) {
-        setStatus("error");
-        pushLog(String(err));
-      }
-    },
-    [url, pushLog],
-  );
+  useEffect(() => {
+    if (!isDesktop) return;
+    window.myraa!.info().then((i) => {
+      setInfo(i);
+      pushLog(`pc ready · ${i.platform} · ${i.user}${i.nut ? "" : " · (nut-js off)"}`);
+    });
+  }, [isDesktop, pushLog]);
 
   const send = useCallback(
-    (cmd: AgentCommand) => {
-      const ws = wsRef.current;
-      if (!ws || ws.readyState !== WebSocket.OPEN) {
-        pushLog(`⚠ offline — skipped ${cmd.type}`);
-        return false;
-      }
-      ws.send(JSON.stringify(cmd));
+    async (cmd: AgentCommand) => {
       const detail =
         cmd.command || cmd.target || cmd.url || cmd.query || cmd.text || cmd.action || cmd.key || "";
       pushLog(`me → ${cmd.type}${detail ? `: ${String(detail).slice(0, 80)}` : ""}`);
-      return true;
+      if (!isDesktop) {
+        pushLog("⚠ browser mode — install desktop app to execute");
+        return false;
+      }
+      try {
+        const res = await window.myraa!.execute(cmd);
+        pushLog(res.ok ? `pc ✓ ${res.out ?? ""}` : `pc ✗ ${res.out ?? "failed"}`);
+        return res.ok;
+      } catch (e) {
+        pushLog(`pc ✗ ${(e as Error).message}`);
+        return false;
+      }
     },
-    [pushLog],
+    [isDesktop, pushLog],
   );
 
-  useEffect(() => () => wsRef.current?.close(), []);
-
-  return { status, url, setUrl, connect, send, log };
+  return { status, isDesktop, info, send, log };
 }
