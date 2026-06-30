@@ -80,12 +80,12 @@ export const interpretCommand = createServerFn({ method: "POST" })
     if (!key) throw new Error("Missing LOVABLE_API_KEY");
 
     const gateway = createLovableAiGatewayProvider(key);
-    const { experimental_output } = await generateText({
+    const { output } = await generateText({
       model: gateway("google/gemini-3-flash-preview"),
       system: SYSTEM,
       prompt: `Platform: ${data.platform ?? "win32"}\nUser: ${data.prompt}`,
-      experimental_output: Output.object({ schema: CommandSchema }),
+      output: Output.object({ schema: CommandSchema }),
     });
 
-    return experimental_output;
+    return output;
   });
