@@ -43,9 +43,8 @@ function createWindow() {
     },
   });
   const cfg = readConfig();
-  const url = cfg.dashboardUrl || "https://id-preview--73c9e898-62d2-4849-aa87-028e442efbda.lovable.app/";
+  const url = cfg.dashboardUrl || "https://project--73c9e898-62d2-4849-aa87-028e442efbda.lovable.app/";
   win.loadURL(url);
-  if (isDev) win.webContents.openDevTools({ mode: "detach" });
 }
 
 
