@@ -1,36 +1,49 @@
-# MYRAA Desktop App
+# MYRAA — Standalone Desktop App
 
-Standalone Electron build — chat e command dile shoja PC te execute hobe.
+Desktop app ekhon **fully self-contained** — TanStack Start ba web build lagbe na.
+UI, AI (Lovable AI Gateway direct), OS control — shob `electron/` folder ei ache.
 
-## Build on your own PC (recommended for Windows .exe)
+## First-time setup (apnar Windows PC te)
 
-```bash
-# 1. Install deps
+```powershell
+# 1. Project folder e jan
+cd path\to\project
+
+# 2. Dependencies install
 npm install
 npm install --save-dev electron @electron/packager
-# Optional — enables mouse/keyboard automation:
+# Optional (mouse/keyboard sim er jonno):
 npm install @nut-tree-fork/nut-js
 
-# 2. Build the web UI
-npm run build
-
-# 3. Run in dev (uses the live preview)
-npx electron electron/main.cjs
-
-# 4. Package as installable app
-# Windows:
-npx @electron/packager . MYRAA --platform=win32 --arch=x64 --out=electron-release --overwrite
-# macOS:
-npx @electron/packager . MYRAA --platform=darwin --arch=x64 --out=electron-release --overwrite
-# Linux:
-npx @electron/packager . MYRAA --platform=linux --arch=x64 --out=electron-release --overwrite
+# 3. Run
+npx electron .
 ```
 
-Output: `electron-release/MYRAA-<platform>-x64/MYRAA.exe` (or equivalent).
+App khulbe → prothom bar **Lovable API key** chaibe. Ekbar diye deben, `%APPDATA%/MYRAA/myraa.config.json` te save hobe.
 
-## Notes
+## Build a `.exe`
 
-- `vite.config.ts` must set `base: './'` for Electron file:// loads.
-- Without `@nut-tree-fork/nut-js`, mouse/keyboard simulation is disabled;
-  URL open, app launch, media keys, lock/sleep/shutdown still work.
-- Windows SmartScreen will warn on first run (unsigned). Click "More info → Run anyway".
+```powershell
+npx @electron/packager . MYRAA --platform=win32 --arch=x64 --out=release --overwrite --ignore="^/src" --ignore="^/public" --ignore="^/dist" --ignore="^/.lovable" --ignore="^/supabase"
+```
+
+Output: `release/MYRAA-win32-x64/MYRAA.exe` — double-click e chalu.
+
+## Lovable API key kotha theke pabo?
+
+Lovable dashboard → Settings → API Keys → **Create new** → copy koro (`lovable_pat_...`). App khullei paste korben.
+
+## Commands ja kaj kore
+
+- **Apps**: chrome, firefox, edge, spotify, code, explorer, notepad, calc, cmd, powershell, discord, telegram, whatsapp, paint, word, excel
+- **Web**: gmail, youtube search, google search, kono URL
+- **Media**: play/pause, next, prev, volume up/down, mute
+- **System**: lock, sleep, shutdown, restart, logout, cancel, screenshot
+- **Shell**: `exec` diye je kono cmd/powershell command
+- **Keyboard**: `key_tap` (ctrl+t, alt+f4), `key_type` (literal text) — nut-js lagbe
+
+## Troubleshooting
+
+- **Blank window** → devtools open kore console dekhen (F12).
+- **AI error 401/403** → API key wrong. Sidebar "Change API Key" te click.
+- **Mouse/keyboard kaj kore na** → `npm install @nut-tree-fork/nut-js` chalan.
