@@ -153,8 +153,8 @@ async function init() {
   statusText.textContent = 'DESKTOP · ' + info.platform + ' · ' + info.user + (info.nut ? '' : ' · (nut-js off)');
   addLog('MYRAA ready on ' + info.platform, 'ok');
   addMsg('ai', 'Assalamu Alaikum Sir! Ami MYRAA — apnar personal PC assistant. Ki korte hobe bolen?');
-  const hasKey = await window.myraa.hasKey();
-  if (!hasKey) keydlg.classList.add('show');
+  // No API key needed — desktop app calls hosted backend
+
 }
 
 keyform.addEventListener('submit', async (e) => {
