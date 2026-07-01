@@ -29,10 +29,10 @@ function writeConfig(cfg) {
 
 function createWindow() {
   const win = new BrowserWindow({
-    width: 1280,
-    height: 820,
-    minWidth: 960,
-    minHeight: 640,
+    width: 1400,
+    height: 900,
+    minWidth: 1024,
+    minHeight: 700,
     backgroundColor: "#020611",
     title: "MYRAA — Neural Desktop Companion",
     autoHideMenuBar: true,
@@ -42,9 +42,12 @@ function createWindow() {
       nodeIntegration: false,
     },
   });
-  win.loadFile(path.join(__dirname, "ui.html"));
+  const cfg = readConfig();
+  const url = cfg.dashboardUrl || "https://id-preview--73c9e898-62d2-4849-aa87-028e442efbda.lovable.app/";
+  win.loadURL(url);
   if (isDev) win.webContents.openDevTools({ mode: "detach" });
 }
+
 
 app.whenReady().then(() => {
   createWindow();
