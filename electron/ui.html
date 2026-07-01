@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>MYRAA — Neural Desktop Companion</title>
+<style>
+  :root{--bg:#020611;--panel:rgba(15,23,42,.6);--border:rgba(56,189,248,.25);--text:#e2e8f0;--muted:#94a3b8;--accent:#38bdf8;--accent2:#a855f7;--ok:#22c55e;--err:#ef4444;}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);overflow:hidden}
+  body{background:radial-gradient(ellipse at 20% 10%,rgba(56,189,248,.15),transparent 50%),radial-gradient(ellipse at 80% 90%,rgba(168,85,247,.15),transparent 50%),var(--bg)}
+  .stars{position:fixed;inset:0;background-image:radial-gradient(1px 1px at 20% 30%,#fff,transparent),radial-gradient(1px 1px at 40% 70%,#fff,transparent),radial-gradient(1px 1px at 60% 20%,#fff,transparent),radial-gradient(2px 2px at 80% 80%,#fff,transparent),radial-gradient(1px 1px at 15% 85%,#fff,transparent),radial-gradient(1px 1px at 90% 40%,#fff,transparent);opacity:.4;pointer-events:none}
+  .app{position:relative;display:grid;grid-template-columns:340px 1fr 340px;gap:16px;padding:16px;height:100vh}
+  .panel{background:var(--panel);backdrop-filter:blur(12px);border:1px solid var(--border);border-radius:16px;padding:18px;overflow:hidden;display:flex;flex-direction:column}
+  h1{font-size:22px;font-weight:700;letter-spacing:.5px;background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  h2{font-size:12px;text-transform:uppercase;letter-spacing:2px;color:var(--muted);margin-bottom:10px}
+  .earth-wrap{flex:1;display:flex;align-items:center;justify-content:center;position:relative}
+  .earth{width:min(360px,80%);aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 30% 30%,#0ea5e9,#1e3a8a 60%,#020611);box-shadow:0 0 80px rgba(56,189,248,.4),inset -20px -20px 60px rgba(0,0,0,.6);animation:spin 30s linear infinite;position:relative}
+  .earth::before{content:'';position:absolute;inset:-6px;border-radius:50%;border:1px dashed rgba(56,189,248,.3);animation:spin 20s linear infinite reverse}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .chat{flex:1;display:flex;flex-direction:column;overflow:hidden}
+  .msgs{flex:1;overflow-y:auto;padding:8px 4px;display:flex;flex-direction:column;gap:10px}
+  .msg{padding:10px 14px;border-radius:12px;max-width:90%;font-size:14px;line-height:1.5;word-wrap:break-word}
+  .msg.user{background:rgba(56,189,248,.15);border:1px solid rgba(56,189,248,.3);align-self:flex-end}
+  .msg.ai{background:rgba(168,85,247,.12);border:1px solid rgba(168,85,247,.3);align-self:flex-start}
+  .msg.sys{background:rgba(148,163,184,.1);border:1px solid rgba(148,163,184,.2);align-self:center;font-size:12px;color:var(--muted)}
+  .input-row{display:flex;gap:8px;margin-top:12px}
+  input,textarea{flex:1;background:rgba(2,6,17,.6);border:1px solid var(--border);color:var(--text);padding:12px 14px;border-radius:10px;font-size:14px;font-family:inherit;outline:none}
+  input:focus,textarea:focus{border-color:var(--accent)}
+  button{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;border:none;padding:12px 18px;border-radius:10px;font-weight:600;cursor:pointer;font-size:14px;transition:transform .1s}
+  button:hover{transform:translateY(-1px)}
+  button:disabled{opacity:.5;cursor:not-allowed;transform:none}
+  button.ghost{background:rgba(56,189,248,.1);border:1px solid var(--border);color:var(--text)}
+  .quick{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+  .quick button{padding:10px;font-size:13px}
+  .log{flex:1;overflow-y:auto;font-family:'Consolas',monospace;font-size:11px;color:var(--muted);display:flex;flex-direction:column-reverse}
+  .log-entry{padding:6px 8px;border-left:2px solid var(--border);margin-bottom:4px}
+  .log-entry.ok{border-color:var(--ok)}
+  .log-entry.err{border-color:var(--err);color:#fca5a5}
+  .status{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);margin-bottom:12px}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 8px var(--ok)}
+</style>
+</head>
+<body>
+<div class="stars"></div>
+<div class="app">
+  <!-- LEFT: Quick actions -->
+  <div class="panel">
+    <h1>MYRAA</h1>
+    <p style="font-size:12px;color:var(--muted);margin:4px 0 16px">Neural Desktop Companion</p>
+    <div class="status"><div class="dot"></div><span id="status">Desktop Mode • Connected</span></div>
+    <h2>Quick Actions</h2>
+    <div class="quick">
+      <button class="ghost" data-cmd='{"type":"launch","target":"chrome"}'>Chrome</button>
+      <button class="ghost" data-cmd='{"type":"launch","target":"notepad"}'>Notepad</button>
+      <button class="ghost" data-cmd='{"type":"launch","target":"calc"}'>Calculator</button>
+      <button class="ghost" data-cmd='{"type":"launch","target":"explorer"}'>Files</button>
+      <button class="ghost" data-cmd='{"type":"launch","target":"spotify"}'>Spotify</button>
+      <button class="ghost" data-cmd='{"type":"launch","target":"terminal"}'>Terminal</button>
+      <button class="ghost" data-cmd='{"type":"media","action":"play_pause"}'>Play/Pause</button>
+      <button class="ghost" data-cmd='{"type":"media","action":"next"}'>Next Track</button>
+      <button class="ghost" data-cmd='{"type":"media","action":"vol_up"}'>Vol +</button>
+      <button class="ghost" data-cmd='{"type":"media","action":"vol_down"}'>Vol -</button>
+      <button class="ghost" data-cmd='{"type":"system","action":"lock"}'>Lock PC</button>
+      <button class="ghost" data-cmd='{"type":"system","action":"screenshot"}'>Screenshot</button>
+    </div>
+  </div>
+
+  <!-- CENTER: Earth + Chat -->
+  <div class="panel">
+    <div class="earth-wrap"><div class="earth"></div></div>
+    <div class="chat">
+      <h2>Neural Console</h2>
+      <div class="msgs" id="msgs">
+        <div class="msg ai">Salam Sir. Ami MYRAA — apnar neural companion. Banglish e command din, PC te execute kore debo.</div>
+      </div>
+      <div class="input-row">
+        <input id="prompt" placeholder="e.g. Chrome khulo, YouTube e lofi cholao..." autofocus />
+        <button id="send">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Activity Log -->
+  <div class="panel">
+    <h2>Activity Log</h2>
+    <div class="log" id="log"></div>
+  </div>
+</div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const msgs = $('msgs'), log = $('log'), input = $('prompt'), send = $('send');
+
+  function addMsg(role, text){
+    const d = document.createElement('div');
+    d.className = 'msg ' + role;
+    d.textContent = text;
+    msgs.appendChild(d);
+    msgs.scrollTop = msgs.scrollHeight;
+  }
+  function addLog(text, cls=''){
+    const d = document.createElement('div');
+    d.className = 'log-entry ' + cls;
+    d.textContent = new Date().toLocaleTimeString() + ' • ' + text;
+    log.insertBefore(d, log.firstChild);
+  }
+
+  async function runCmd(cmd){
+    if (!window.myraa) { addLog('Not in desktop mode', 'err'); return; }
+    const label = cmd.type + (cmd.target?' '+cmd.target:'') + (cmd.action?' '+cmd.action:'') + (cmd.url?' '+cmd.url:'') + (cmd.query?' "'+cmd.query+'"':'');
+    try {
+      const res = await window.myraa.execute(cmd);
+      addLog((res.ok?'✓ ':'✗ ') + label + (res.out?' — '+String(res.out).slice(0,80):''), res.ok?'ok':'err');
+    } catch(e){ addLog('✗ ' + label + ' — ' + e.message, 'err'); }
+  }
+
+  document.querySelectorAll('[data-cmd]').forEach(btn => {
+    btn.addEventListener('click', () => runCmd(JSON.parse(btn.dataset.cmd)));
+  });
+
+  async function handleSend(){
+    const text = input.value.trim();
+    if (!text) return;
+    input.value = '';
+    addMsg('user', text);
+    send.disabled = true;
+    if (!window.myraa) { addMsg('sys', 'Desktop mode e chalao — browser e AI kaj korbe na.'); send.disabled = false; return; }
+    try {
+      const res = await window.myraa.ai(text);
+      if (res.error) { addMsg('sys', 'Error: ' + res.error); }
+      else {
+        addMsg('ai', res.reply || 'OK Sir.');
+        for (const cmd of (res.commands || [])) await runCmd(cmd);
+      }
+    } catch(e){ addMsg('sys', 'Error: ' + e.message); }
+    send.disabled = false;
+    input.focus();
+  }
+  send.addEventListener('click', handleSend);
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleSend(); });
+
+  if (window.myraa?.info) window.myraa.info().then(i => addLog('Booted • ' + i.platform + ' • ' + i.user, 'ok'));
+</script>
+</body>
+</html>
