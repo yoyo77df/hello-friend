@@ -1,49 +1,41 @@
-# MYRAA — Standalone Desktop App
+# MYRAA — Desktop App Build Guide
 
-Desktop app ekhon **fully self-contained** — TanStack Start ba web build lagbe na.
-UI, AI (Lovable AI Gateway direct), OS control — shob `electron/` folder ei ache.
+## Windows PC te build korar steps:
 
-## First-time setup (apnar Windows PC te)
+### 1. Node.js install (ekbar)
+https://nodejs.org theke LTS version namao (18+ hole cholbe).
+
+### 2. Project folder e PowerShell open korun, ei command gulo run korun:
 
 ```powershell
-# 1. Project folder e jan
-cd path\to\project
-
-# 2. Dependencies install
 npm install
 npm install --save-dev electron @electron/packager
-# Optional (mouse/keyboard sim er jonno):
 npm install @nut-tree-fork/nut-js
+```
 
-# 3. Run
+### 3. App test korte:
+```powershell
 npx electron .
 ```
+MYRAA window khulbe — rotating Earth dashboard load hobe (internet lagbe).
 
-App khulbe → prothom bar **Lovable API key** chaibe. Ekbar diye deben, `%APPDATA%/MYRAA/myraa.config.json` te save hobe.
-
-## Build a `.exe`
-
+### 4. `.exe` banate:
 ```powershell
-npx @electron/packager . MYRAA --platform=win32 --arch=x64 --out=release --overwrite --ignore="^/src" --ignore="^/public" --ignore="^/dist" --ignore="^/.lovable" --ignore="^/supabase"
+npx @electron/packager . MYRAA --platform=win32 --arch=x64 --out=release --overwrite --ignore="^/src" --ignore="^/public" --ignore="^/supabase" --ignore="^/.lovable" --ignore="^/dist" --ignore="^/electron-release"
 ```
 
-Output: `release/MYRAA-win32-x64/MYRAA.exe` — double-click e chalu.
+Output: `release/MYRAA-win32-x64/MYRAA.exe` — double-click korlei chalu.
 
-## Lovable API key kotha theke pabo?
+## Files:
+- `electron/main.cjs` — Electron main process (OS commands + AI proxy)
+- `electron/preload.cjs` — secure bridge (window.myraa API)
+- Backend: Supabase edge function `myraa-ai` (already deployed)
 
-Lovable dashboard → Settings → API Keys → **Create new** → copy koro (`lovable_pat_...`). App khullei paste korben.
-
-## Commands ja kaj kore
-
-- **Apps**: chrome, firefox, edge, spotify, code, explorer, notepad, calc, cmd, powershell, discord, telegram, whatsapp, paint, word, excel
-- **Web**: gmail, youtube search, google search, kono URL
-- **Media**: play/pause, next, prev, volume up/down, mute
-- **System**: lock, sleep, shutdown, restart, logout, cancel, screenshot
-- **Shell**: `exec` diye je kono cmd/powershell command
-- **Keyboard**: `key_tap` (ctrl+t, alt+f4), `key_type` (literal text) — nut-js lagbe
-
-## Troubleshooting
-
-- **Blank window** → devtools open kore console dekhen (F12).
-- **AI error 401/403** → API key wrong. Sidebar "Change API Key" te click.
-- **Mouse/keyboard kaj kore na** → `npm install @nut-tree-fork/nut-js` chalan.
+## Config override (optional):
+`%APPDATA%\MYRAA\myraa.config.json`:
+```json
+{
+  "dashboardUrl": "https://your-preview-url.lovable.app/",
+  "backendUrl": "https://tdijnzdeofeylvqscjdv.supabase.co/functions/v1/myraa-ai"
+}
+```
