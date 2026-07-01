@@ -27,7 +27,11 @@ function writeConfig(cfg) {
   fs.writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2));
 }
 
+const DASHBOARD_URL = "https://id-preview--73c9e898-62d2-4849-aa87-028e442efbda.lovable.app";
+
 function createWindow() {
+  const cfg = readConfig();
+  const url = (cfg.dashboardUrl && /^https?:\/\//.test(cfg.dashboardUrl)) ? cfg.dashboardUrl : DASHBOARD_URL;
   const win = new BrowserWindow({
     width: 1400,
     height: 900,
@@ -42,7 +46,7 @@ function createWindow() {
       nodeIntegration: false,
     },
   });
-  win.loadFile(path.join(__dirname, "ui.html"));
+  win.loadURL(url).catch(() => win.loadFile(path.join(__dirname, "ui.html")));
 }
 
 
