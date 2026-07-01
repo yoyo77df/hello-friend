@@ -42,9 +42,7 @@ function createWindow() {
       nodeIntegration: false,
     },
   });
-  const cfg = readConfig();
-  const url = cfg.dashboardUrl || "https://project--73c9e898-62d2-4849-aa87-028e442efbda.lovable.app/";
-  win.loadURL(url);
+  win.loadFile(path.join(__dirname, "ui.html"));
 }
 
 
