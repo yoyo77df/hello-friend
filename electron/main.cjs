@@ -27,11 +27,8 @@ function writeConfig(cfg) {
   fs.writeFileSync(CONFIG_PATH, JSON.stringify(cfg, null, 2));
 }
 
-const DASHBOARD_URL = "https://id-preview--73c9e898-62d2-4849-aa87-028e442efbda.lovable.app";
-
 function createWindow() {
   const cfg = readConfig();
-  const url = (cfg.dashboardUrl && /^https?:\/\//.test(cfg.dashboardUrl)) ? cfg.dashboardUrl : DASHBOARD_URL;
   const win = new BrowserWindow({
     width: 1400,
     height: 900,
@@ -40,13 +37,19 @@ function createWindow() {
     backgroundColor: "#020611",
     title: "MYRAA — Neural Desktop Companion",
     autoHideMenuBar: true,
+    icon: path.join(__dirname, "icon.ico"),
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,
       nodeIntegration: false,
     },
   });
-  win.loadURL(url).catch(() => win.loadFile(path.join(__dirname, "ui.html")));
+  // Load bundled UI (no external login page). Optional override via config.
+  if (cfg.dashboardUrl && /^https?:\/\//.test(cfg.dashboardUrl)) {
+    win.loadURL(cfg.dashboardUrl).catch(() => win.loadFile(path.join(__dirname, "ui.html")));
+  } else {
+    win.loadFile(path.join(__dirname, "ui.html"));
+  }
 }
 
 
