@@ -190,7 +190,7 @@ ipcMain.handle("myraa:info", () => ({
 }));
 
 // ─── IPC: config (backend URL — optional override) ──────────────────────────
-const DEFAULT_BACKEND = "https://id-preview--73c9e898-62d2-4849-aa87-028e442efbda.lovable.app/api/public/myraa";
+const DEFAULT_BACKEND = "https://tdijnzdeofeylvqscjdv.supabase.co/functions/v1/myraa-ai";
 ipcMain.handle("myraa:hasKey", () => true); // no key needed anymore
 ipcMain.handle("myraa:setKey", (_e, url) => {
   const cfg = readConfig(); cfg.backendUrl = String(url || "").trim() || DEFAULT_BACKEND; writeConfig(cfg);
@@ -200,7 +200,7 @@ ipcMain.handle("myraa:setKey", (_e, url) => {
 // ─── IPC: AI (call Lovable-hosted public endpoint — no key on client) ───────
 ipcMain.handle("myraa:ai", async (_e, prompt) => {
   const cfg = readConfig();
-  const url = cfg.backendUrl || DEFAULT_BACKEND;
+  let url = cfg.backendUrl && /^https?:\/\//.test(cfg.backendUrl) ? cfg.backendUrl : DEFAULT_BACKEND;
   try {
     const res = await fetch(url, {
       method: "POST",

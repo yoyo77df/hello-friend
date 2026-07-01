@@ -1,1 +1,4 @@
 project_id = "tdijnzdeofeylvqscjdv"
+
+[functions.myraa-ai]
+verify_jwt = false
