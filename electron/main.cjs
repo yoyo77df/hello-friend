@@ -186,79 +186,35 @@ ipcMain.handle("myraa:info", () => ({
   user: os.userInfo().username, nut: !!nut, version: app.getVersion(),
 }));
 
-// ─── IPC: config (API key) ──────────────────────────────────────────────────
-ipcMain.handle("myraa:hasKey", () => !!readConfig().lovableApiKey);
-ipcMain.handle("myraa:setKey", (_e, key) => {
-  const cfg = readConfig(); cfg.lovableApiKey = String(key || "").trim(); writeConfig(cfg);
+// ─── IPC: config (backend URL — optional override) ──────────────────────────
+const DEFAULT_BACKEND = "https://id-preview--73c9e898-62d2-4849-aa87-028e442efbda.lovable.app/api/public/myraa";
+ipcMain.handle("myraa:hasKey", () => true); // no key needed anymore
+ipcMain.handle("myraa:setKey", (_e, url) => {
+  const cfg = readConfig(); cfg.backendUrl = String(url || "").trim() || DEFAULT_BACKEND; writeConfig(cfg);
   return { ok: true };
 });
 
-// ─── IPC: AI (direct fetch to Lovable AI Gateway) ───────────────────────────
-const SYSTEM_PROMPT = `You are MYRAA — Rupom's personal Windows desktop AI assistant.
-Personality: professional friendly Banglish (Bangla+English). Address user as "Sir" or "Boss". Replies under 2 lines.
-
-Translate the user request into a JSON object with:
-- "reply": short Banglish response.
-- "commands": ordered array of commands to execute on the PC.
-
-Command types:
-- {"type":"exec","command":"..."}    — any shell/cmd/powershell command.
-- {"type":"launch","target":"..."}   — aliases: chrome, firefox, edge, spotify, code, explorer, notepad, calc, cmd, powershell, discord, telegram, whatsapp, paint, word, excel. Or full path.
-- {"type":"key_tap","key":"...","modifiers":["ctrl"|"alt"|"shift"|"meta"]}
-- {"type":"key_type","text":"..."}   — type literal text.
-- {"type":"media","action":"play_pause|next|prev|vol_up|vol_down|mute"}
-- {"type":"system","action":"lock|sleep|shutdown|restart|logout|cancel|screenshot"}
-- {"type":"open_url","url":"https://..."}
-- {"type":"search_web","query":"..."}
-
-Rules:
-- "gmail open koro" → open_url https://mail.google.com
-- "youtube <q>" → open_url https://www.youtube.com/results?search_query=<q>
-- "google search <q>" → search_web
-- "type X" / "paste X" → key_type
-- Pure chat → commands: [].
-- OUTPUT ONLY VALID JSON. No markdown, no code fences, no extra text.`;
-
-async function callLovableAI(prompt, apiKey) {
-  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: `Platform: ${plat}\nUser: ${prompt}` },
-      ],
-      response_format: { type: "json_object" },
-    }),
-  });
-  if (!res.ok) {
-    const txt = await res.text().catch(() => "");
-    throw new Error(`AI Gateway ${res.status}: ${txt.slice(0, 200)}`);
-  }
-  const data = await res.json();
-  const content = data?.choices?.[0]?.message?.content || "{}";
-  try { return JSON.parse(content); }
-  catch {
-    const m = content.match(/\{[\s\S]*\}/);
-    if (m) return JSON.parse(m[0]);
-    return { reply: content, commands: [] };
-  }
-}
-
+// ─── IPC: AI (call Lovable-hosted public endpoint — no key on client) ───────
 ipcMain.handle("myraa:ai", async (_e, prompt) => {
   const cfg = readConfig();
-  if (!cfg.lovableApiKey) return { error: "API key missing. Please set your Lovable API key." };
+  const url = cfg.backendUrl || DEFAULT_BACKEND;
   try {
-    const out = await callLovableAI(String(prompt || ""), cfg.lovableApiKey);
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt: String(prompt || ""), platform: plat }),
+    });
+    if (!res.ok) {
+      const txt = await res.text().catch(() => "");
+      return { error: `Backend ${res.status}: ${txt.slice(0, 200)}` };
+    }
+    const out = await res.json();
+    if (out.error) return { error: out.error };
     return {
       reply: out.reply || "OK Sir.",
       commands: Array.isArray(out.commands) ? out.commands : [],
     };
   } catch (e) {
-    return { error: e.message || String(e) };
+    return { error: (e && e.message) || String(e) };
   }
 });
