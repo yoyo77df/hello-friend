@@ -252,15 +252,19 @@ ipcMain.handle("myraa:setKey", (_e, url) => {
 });
 
 // ─── IPC: AI (call Lovable-hosted public endpoint — no key on client) ───────
-ipcMain.handle("myraa:ai", async (_e, prompt) => {
+ipcMain.handle("myraa:ai", async (_e, payload) => {
   const cfg = readConfig();
   let url = cfg.backendUrl && /^https?:\/\//.test(cfg.backendUrl) ? cfg.backendUrl : DEFAULT_BACKEND;
+  const body = typeof payload === "string"
+    ? { prompt: payload, platform: plat }
+    : { prompt: String(payload?.prompt || ""), platform: plat, image: payload?.image || undefined };
   try {
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt: String(prompt || ""), platform: plat }),
+      body: JSON.stringify(body),
     });
+
     if (!res.ok) {
       const txt = await res.text().catch(() => "");
       return { error: `Backend ${res.status}: ${txt.slice(0, 200)}` };
