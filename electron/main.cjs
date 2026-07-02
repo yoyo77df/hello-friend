@@ -1,9 +1,13 @@
 // MYRAA — Electron main process (self-contained desktop app)
-// UI: electron/ui.html (loaded via file://). AI: Lovable AI Gateway (direct fetch).
-// OS control: nut-js (optional) + shell/PowerShell fallbacks.
+// UI: electron/ui.html. AI: Lovable Edge Function. TTS: ElevenLabs via Edge Function.
+// OS control: nut-js (optional) + shell/PowerShell fallbacks. Screen vision: desktopCapturer.
 
-const { app, BrowserWindow, ipcMain, shell, dialog } = require("electron");
+const { app, BrowserWindow, ipcMain, shell, dialog, desktopCapturer, screen } = require("electron");
 const path = require("path");
+const fs = require("fs");
+const { exec } = require("child_process");
+const os = require("os");
+
 const fs = require("fs");
 const { exec } = require("child_process");
 const os = require("os");
@@ -168,6 +172,15 @@ async function keyTap(key, modifiers = []) {
   return { ok: true, out: `${(modifiers||[]).join("+")}+${key}` };
 }
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, Math.max(0, Math.min(15000, ms|0))));
+
+async function mouseClick(x, y) {
+  if (!nut) return { ok: false, out: "mouse needs @nut-tree-fork/nut-js" };
+  await nut.mouse.setPosition(new nut.Point(x, y));
+  await nut.mouse.leftClick();
+  return { ok: true, out: `click ${x},${y}` };
+}
+
 // ─── IPC: OS execute ────────────────────────────────────────────────────────
 ipcMain.handle("myraa:execute", async (_e, cmd) => {
   try {
@@ -181,12 +194,49 @@ ipcMain.handle("myraa:execute", async (_e, cmd) => {
       case "key_type":   return typeText(cmd.text || "");
       case "key_tap":    return keyTap(cmd.key, cmd.modifiers || []);
       case "exec":       return sh(cmd.command);
+      case "wait":       await sleep(cmd.ms || 1000); return { ok: true, out: `waited ${cmd.ms||1000}ms` };
+      case "mouse_click":return mouseClick(cmd.x|0, cmd.y|0);
       default:           return { ok: false, out: `unknown cmd ${cmd.type}` };
     }
   } catch (err) {
     return { ok: false, out: err && err.message ? err.message : String(err) };
   }
 });
+
+// ─── IPC: screen capture (for vision) ───────────────────────────────────────
+ipcMain.handle("myraa:screenshot", async () => {
+  try {
+    const disp = screen.getPrimaryDisplay();
+    const scale = 0.6;
+    const w = Math.round(disp.size.width * scale);
+    const h = Math.round(disp.size.height * scale);
+    const sources = await desktopCapturer.getSources({ types: ["screen"], thumbnailSize: { width: w, height: h } });
+    const src = sources[0];
+    if (!src) return { ok: false, out: "no screen" };
+    const png = src.thumbnail.toJPEG(70); // JPEG smaller than PNG
+    return { ok: true, image: "data:image/jpeg;base64," + png.toString("base64") };
+  } catch (e) {
+    return { ok: false, out: e.message || String(e) };
+  }
+});
+
+// ─── IPC: TTS (ElevenLabs via Edge Function) ────────────────────────────────
+const TTS_URL = "https://tdijnzdeofeylvqscjdv.supabase.co/functions/v1/myraa-tts";
+ipcMain.handle("myraa:tts", async (_e, text) => {
+  try {
+    const res = await fetch(TTS_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: String(text || "").slice(0, 1000) }),
+    });
+    if (!res.ok) return { error: `TTS ${res.status}` };
+    const buf = Buffer.from(await res.arrayBuffer());
+    return { ok: true, audio: "data:audio/mpeg;base64," + buf.toString("base64") };
+  } catch (e) {
+    return { error: e.message || String(e) };
+  }
+});
+
 
 ipcMain.handle("myraa:info", () => ({
   platform: plat, release: os.release(), hostname: os.hostname(),
@@ -202,15 +252,19 @@ ipcMain.handle("myraa:setKey", (_e, url) => {
 });
 
 // ─── IPC: AI (call Lovable-hosted public endpoint — no key on client) ───────
-ipcMain.handle("myraa:ai", async (_e, prompt) => {
+ipcMain.handle("myraa:ai", async (_e, payload) => {
   const cfg = readConfig();
   let url = cfg.backendUrl && /^https?:\/\//.test(cfg.backendUrl) ? cfg.backendUrl : DEFAULT_BACKEND;
+  const body = typeof payload === "string"
+    ? { prompt: payload, platform: plat }
+    : { prompt: String(payload?.prompt || ""), platform: plat, image: payload?.image || undefined };
   try {
     const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt: String(prompt || ""), platform: plat }),
+      body: JSON.stringify(body),
     });
+
     if (!res.ok) {
       const txt = await res.text().catch(() => "");
       return { error: `Backend ${res.status}: ${txt.slice(0, 200)}` };

@@ -2,3 +2,7 @@ project_id = "tdijnzdeofeylvqscjdv"
 
 [functions.myraa-ai]
 verify_jwt = false
+
+[functions.myraa-tts]
+verify_jwt = false
+
