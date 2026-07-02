@@ -296,7 +296,8 @@ async function mouseClick(x, y) {
 }
 
 // ─── IPC: OS execute ────────────────────────────────────────────────────────
-ipcMain.handle("myraa:execute", async (_e, cmd) => {
+// ─── Unified command runner (used by IPC + phone bridge) ────────────────────
+async function runCommand(cmd) {
   try {
     switch (cmd.type) {
       case "open_url":   if (cmd.url) await shell.openExternal(cmd.url); return { ok: true, out: cmd.url };
@@ -315,26 +316,26 @@ ipcMain.handle("myraa:execute", async (_e, cmd) => {
   } catch (err) {
     return { ok: false, out: err && err.message ? err.message : String(err) };
   }
-});
+}
 
-// ─── IPC: screen capture (for vision) ───────────────────────────────────────
+ipcMain.handle("myraa:execute", (_e, cmd) => runCommand(cmd));
+
 ipcMain.handle("myraa:screenshot", async () => {
   try {
     const disp = screen.getPrimaryDisplay();
-    const scale = 0.6;
+    const scale = 0.5;
     const w = Math.round(disp.size.width * scale);
     const h = Math.round(disp.size.height * scale);
     const sources = await desktopCapturer.getSources({ types: ["screen"], thumbnailSize: { width: w, height: h } });
     const src = sources[0];
     if (!src) return { ok: false, out: "no screen" };
-    const png = src.thumbnail.toJPEG(70); // JPEG smaller than PNG
-    return { ok: true, image: "data:image/jpeg;base64," + png.toString("base64") };
+    const jpg = src.thumbnail.toJPEG(60);
+    return { ok: true, image: "data:image/jpeg;base64," + jpg.toString("base64") };
   } catch (e) {
     return { ok: false, out: e.message || String(e) };
   }
 });
 
-// ─── IPC: TTS (ElevenLabs via Edge Function) ────────────────────────────────
 const TTS_URL = "https://tdijnzdeofeylvqscjdv.supabase.co/functions/v1/myraa-tts";
 ipcMain.handle("myraa:tts", async (_e, text) => {
   try {
@@ -351,45 +352,32 @@ ipcMain.handle("myraa:tts", async (_e, text) => {
   }
 });
 
-
 ipcMain.handle("myraa:info", () => ({
   platform: plat, release: os.release(), hostname: os.hostname(),
   user: os.userInfo().username, nut: !!nut, version: app.getVersion(),
+  bridge: phoneBridgeUrl(),
 }));
 
-// ─── IPC: config (backend URL — optional override) ──────────────────────────
 const DEFAULT_BACKEND = "https://tdijnzdeofeylvqscjdv.supabase.co/functions/v1/myraa-ai";
-ipcMain.handle("myraa:hasKey", () => true); // no key needed anymore
-ipcMain.handle("myraa:setKey", (_e, url) => {
-  const cfg = readConfig(); cfg.backendUrl = String(url || "").trim() || DEFAULT_BACKEND; writeConfig(cfg);
-  return { ok: true };
-});
-
-// ─── IPC: AI (call Lovable-hosted public endpoint — no key on client) ───────
-ipcMain.handle("myraa:ai", async (_e, payload) => {
+async function callAI(payload) {
   const cfg = readConfig();
-  let url = cfg.backendUrl && /^https?:\/\//.test(cfg.backendUrl) ? cfg.backendUrl : DEFAULT_BACKEND;
+  const url = cfg.backendUrl && /^https?:\/\//.test(cfg.backendUrl) ? cfg.backendUrl : DEFAULT_BACKEND;
   const body = typeof payload === "string"
     ? { prompt: payload, platform: plat }
     : { prompt: String(payload?.prompt || ""), platform: plat, image: payload?.image || undefined };
   try {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-
-    if (!res.ok) {
-      const txt = await res.text().catch(() => "");
-      return { error: `Backend ${res.status}: ${txt.slice(0, 200)}` };
-    }
+    const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    if (!res.ok) { const txt = await res.text().catch(() => ""); return { error: `Backend ${res.status}: ${txt.slice(0, 200)}` }; }
     const out = await res.json();
     if (out.error) return { error: out.error };
-    return {
-      reply: out.reply || "OK Sir.",
-      commands: Array.isArray(out.commands) ? out.commands : [],
-    };
-  } catch (e) {
-    return { error: (e && e.message) || String(e) };
-  }
+    return { reply: out.reply || "OK Sir.", commands: Array.isArray(out.commands) ? out.commands : [] };
+  } catch (e) { return { error: (e && e.message) || String(e) }; }
+}
+
+ipcMain.handle("myraa:hasKey", () => true);
+ipcMain.handle("myraa:setKey", (_e, url) => {
+  const cfg = readConfig(); cfg.backendUrl = String(url || "").trim() || DEFAULT_BACKEND; writeConfig(cfg);
+  return { ok: true };
 });
+ipcMain.handle("myraa:ai", (_e, payload) => callAI(payload));
+ipcMain.handle("myraa:bridge", () => ({ url: phoneBridgeUrl(), token: getBridgeToken() }));
