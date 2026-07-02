@@ -327,12 +327,15 @@
       addMsg('sys', 'desktop mode only'); thinking=false; t.remove(); return;
     }
     try {
-      // Auto vision: grab screen so MYRAA can see what user is doing
+      // Vision only when user asks — huge speedup for chat/commands
       let image;
-      try {
-        const shot = await window.myraa.screenshot?.();
-        if (shot?.ok && shot.image) image = shot.image;
-      } catch {}
+      const needsVision = /screen|dekho|dekhte|dekhcho|dekhecho|amar screen|ki dekh|ei window|ei page|ei ta ki|error|ki lekha|ki likh/i.test(text);
+      if (needsVision) {
+        try {
+          const shot = await window.myraa.screenshot?.();
+          if (shot?.ok && shot.image) image = shot.image;
+        } catch {}
+      }
       const res = await window.myraa.ai({ prompt: text, image });
       t.remove();
       if (res.error) addMsg('sys', 'error: ' + res.error);
