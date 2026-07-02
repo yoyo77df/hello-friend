@@ -7,8 +7,8 @@ const cors = {
   "Access-Control-Allow-Headers": "Content-Type",
 };
 
-// Sarah — soft female, multilingual v2 handles Bangla text well.
-const DEFAULT_VOICE = "EXAVITQu4vr4xnSDxMaL";
+// Lily — soft young female, warmer natural tone (less British than Sarah).
+const DEFAULT_VOICE = "pFZP5JQG7iQjIQuC4Bku";
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
@@ -26,13 +26,15 @@ Deno.serve(async (req: Request) => {
         headers: { "xi-api-key": key, "Content-Type": "application/json" },
         body: JSON.stringify({
           text,
-          model_id: "eleven_multilingual_v2",
+          // v2.5 turbo supports language_code — locks pronunciation to Bangla so it doesn't slip into British English.
+          model_id: "eleven_turbo_v2_5",
+          language_code: "bn",
           voice_settings: {
-            stability: 0.45,
-            similarity_boost: 0.85,
-            style: 0.35,
+            stability: 0.55,
+            similarity_boost: 0.9,
+            style: 0.15,
             use_speaker_boost: true,
-            speed: 1.0,
+            speed: 0.95,
           },
         }),
       },

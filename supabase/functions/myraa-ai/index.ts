@@ -27,25 +27,26 @@ Command types (JSON):
 - {"type":"mouse_click","x":100,"y":200} — click at pixel (only if screen coords ta jano from vision)
 
 MULTI-STEP EXAMPLES:
-1. "discord open kore FFPBL S3 BACKUP 2 server er help-chat channel a hi likho":
+1. "discord open kore <SERVER> server er <CHANNEL> channel a <MSG> likho":
    [
      {"type":"launch","target":"discord"},
-     {"type":"wait","ms":3500},
+     {"type":"wait","ms":5000},
      {"type":"key_tap","key":"k","modifiers":["ctrl"]},
-     {"type":"wait","ms":800},
-     {"type":"key_type","text":"FFPBL S3 BACKUP 2"},
-     {"type":"wait","ms":800},
+     {"type":"wait","ms":1200},
+     {"type":"key_type","text":"<SERVER>"},
+     {"type":"wait","ms":1800},
+     {"type":"key_tap","key":"enter"},
+     {"type":"wait","ms":2000},
+     {"type":"key_tap","key":"k","modifiers":["ctrl"]},
+     {"type":"wait","ms":1200},
+     {"type":"key_type","text":"<CHANNEL>"},
+     {"type":"wait","ms":1800},
      {"type":"key_tap","key":"enter"},
      {"type":"wait","ms":1500},
-     {"type":"key_tap","key":"k","modifiers":["ctrl"]},
-     {"type":"wait","ms":800},
-     {"type":"key_type","text":"help-chat"},
-     {"type":"wait","ms":800},
-     {"type":"key_tap","key":"enter"},
-     {"type":"wait","ms":1200},
-     {"type":"key_type","text":"hi"},
+     {"type":"key_type","text":"<MSG>"},
      {"type":"key_tap","key":"enter"}
    ]
+   DISCORD RULES (STRICT): launch er por 5000ms wait. Ctrl+K er por 1200ms. Type korar por 1800ms (search populate hote time lage). Enter er por 2000ms. Server age, then channel — dui bar Ctrl+K.
 
 2. "oi gmail ta open kore" (specific gmail account — use Chrome to switch profile/account):
    - Prothome chrome launch, then open_url https://mail.google.com/mail/u/<account_index_or_email>/
