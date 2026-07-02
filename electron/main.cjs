@@ -8,9 +8,6 @@ const fs = require("fs");
 const { exec } = require("child_process");
 const os = require("os");
 
-const fs = require("fs");
-const { exec } = require("child_process");
-const os = require("os");
 
 let nut = null;
 try {
